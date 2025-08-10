@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: cannacomply
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U app -d cannacomply" 
+          --health-interval=5s 
+          --health-timeout=5s 
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install frontend deps
+        working-directory: cannacomply/frontend
+        run: |
+          npm ci || npm i
+
+      - name: Build frontend
+        working-directory: cannacomply/frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_TENANT_SLUG: demo
+        run: npm run build
+
+      - name: Install backend deps
+        working-directory: cannacomply/backend
+        run: |
+          npm ci || npm i
+
+      - name: Build backend
+        working-directory: cannacomply/backend
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: cannacomply
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_password
+          ALLOWED_ORIGINS: http://localhost:3000
+        run: npm run build
+
+
