@@ -1,0 +1,339 @@
+---
+alwaysApply: true
+---
+```markdown
+# SYSTEM PROMPT — Generate the **CannaComply** Monorepo (Files + Directories + Descriptions)
+
+You are an elite full-stack scaffolder. Create a **ready-to-run** monorepo for a Cannabis Dispensary **Compliance & Operations** SaaS called **CannaComply**.
+
+> **Non-negotiables**
+> - Generate **all files and folders** listed below with **production-grade code**, not placeholders.
+> - App must run locally with `docker compose up --build` after copying `.env.example` → `.env`.
+> - Include minimal but working implementations for the features referenced (inventory list/sync, compliance health/alerts, delivery routes list, revalidate + quick fix actions).
+> - Keep code clean, typed, and lint-friendly.
+
+---
+
+## Project Overview
+
+- **Frontend**: Next.js 14 (App Router), Tailwind, minimal components (Dashboard, Inventory, Compliance, Delivery), `AppShell` layout, `api.ts` helper (server + client).
+- **Backend**: NestJS + TypeORM (Postgres), entities (tenant, user, membership, inventory, compliance_event), controllers for inventory/compliance, seed & migrate scripts, CORS + Helmet.
+- **Infra**: Docker Compose (Postgres, backend, frontend, nginx), Nginx reverse proxy.
+- **CI**: GitHub Actions workflow to build and test.
+- **Docs**: README with quickstart.
+- **Configs**: `.env.example` with sensible defaults.
+
+---
+
+## File Tree (generate exactly as shown)
+
+> For each file, **create it** and follow the **Description / Implementation Notes**.
+
+```
+
+cannacomply/
+├─ README.md
+├─ .env.example
+├─ docker-compose.yml
+├─ .github/
+│  └─ workflows/
+│     └─ ci.yml
+├─ infra/
+│  └─ nginx/
+│     └─ default.conf
+├─ frontend/
+│  ├─ Dockerfile
+│  ├─ package.json
+│  ├─ next.config.mjs
+│  ├─ postcss.config.js
+│  ├─ tailwind.config.ts
+│  └─ src/
+│     ├─ app/
+│     │  ├─ layout.tsx
+│     │  ├─ (app)/
+│     │  │  ├─ layout.tsx
+│     │  │  ├─ dashboard/
+│     │  │  │  └─ page.tsx
+│     │  │  ├─ inventory/
+│     │  │  │  └─ page.tsx
+│     │  │  ├─ compliance/
+│     │  │  │  └─ page.tsx
+│     │  │  └─ delivery/
+│     │  │     └─ page.tsx
+│     │  └─ globals.css
+│     ├─ components/
+│     │  ├─ AppShell.tsx
+│     │  ├─ DataTable.tsx
+│     │  ├─ HealthGauge.tsx
+│     │  └─ StatCard.tsx
+│     └─ lib/
+│        └─ api.ts
+└─ backend/
+├─ Dockerfile
+├─ package.json
+├─ tsconfig.json
+└─ src/
+├─ main.ts
+├─ app.module.ts
+├─ database/
+│  └─ entities/
+│     ├─ tenant.entity.ts
+│     ├─ user.entity.ts
+│     ├─ membership.entity.ts
+│     ├─ inventory\_item.entity.ts
+│     └─ compliance\_event.entity.ts
+├─ inventory/
+│  ├─ inventory.controller.ts
+│  └─ inventory.service.ts
+├─ compliance/
+│  └─ compliance.controller.ts
+└─ scripts/
+├─ migrate.ts
+└─ seed.ts
+
+````
+
+---
+
+## Root Files
+
+### `README.md`
+**Description:** Quickstart instructions, architecture overview, and service URLs.
+**Implementation Notes:** Include steps to copy envs, run Docker, and default ports. Mention pages/paths to click.
+
+### `.env.example`
+**Description:** Shared environment variables for local dev.
+**Implementation Notes:** Provide defaults:
+- Postgres connection (host `postgres`, db `cannacomply`, user `app`, pass `app_password`).
+- Frontend: `NEXT_PUBLIC_API_URL=http://localhost:4000`, `NEXT_PUBLIC_TENANT_SLUG=demo`, `NEXTAUTH_SECRET=something_dev`.
+- Backend JWT: `JWT_ISSUER=cannacomply`, `JWT_AUDIENCE=cannacomply-web`, `JWT_SECRET=change_me`.
+- 3P keys placeholders (Stripe, Persona, Google Maps, METRC/BioTrack) but **not used** in minimal runnable demo.
+
+### `docker-compose.yml`
+**Description:** Orchestrates Postgres, Nest backend, Next frontend, and Nginx proxy.
+**Implementation Notes:**
+- Postgres 16 with healthcheck, volume `pgdata`.
+- Backend builds `backend/Dockerfile`, command: run migrate placeholder then `start:prod`.
+- Frontend builds `frontend/Dockerfile`.
+- Nginx reverse proxy mapping `/` → frontend:3000 and `/api/` → backend:4000.
+
+---
+
+## CI
+
+### `.github/workflows/ci.yml`
+**Description:** Basic CI to install, build frontend and backend.
+**Implementation Notes:**
+- Node 20.
+- Spin up Postgres service.
+- Install deps (`npm ci` fallback to `npm i`).
+- Build both projects.
+
+---
+
+## Infra
+
+### `infra/nginx/default.conf`
+**Description:** Dev reverse proxy.
+**Implementation Notes:** Proxy `/` to frontend, `/api/` to backend, forward headers.
+
+---
+
+## Frontend (Next.js 14)
+
+### `frontend/Dockerfile`
+**Description:** Multi-stage build (deps → build → runtime).
+**Implementation Notes:** Expose `3000`, run `npm start`.
+
+### `frontend/package.json`
+**Description:** Next 14 app with Tailwind, NextAuth, Zustand, Framer Motion.
+**Implementation Notes:** Scripts: `dev`, `build`, `start`. Dependencies for the used components.
+
+### `frontend/next.config.mjs`
+**Description:** Minimal config; allow server actions; nothing exotic.
+
+### `frontend/postcss.config.js` & `frontend/tailwind.config.ts`
+**Description:** Standard Tailwind setup.
+**Implementation Notes:** Content glob to `./src/**/*.{ts,tsx}`.
+
+### `frontend/src/app/layout.tsx`
+**Description:** Root layout, wraps app with `SessionProvider`, sets global styles and metadata.
+**Implementation Notes:** Basic HTML shell, body class with Tailwind.
+
+### `frontend/src/app/(app)/layout.tsx`
+**Description:** Routes under `(app)` use `AppShell`.
+**Implementation Notes:** Default export returning `<AppShell>{children}</AppShell>`.
+
+### `frontend/src/app/(app)/dashboard/page.tsx`
+**Description:** Server component Dashboard.
+**UI:** Health gauge + stat cards (alerts/deliveries/revenue) + recent alerts/deliveries lists.
+**Data:** Call `api('/compliance/health')`, `api('/compliance/alerts?limit=5')`, `api('/delivery/summary/today')`, `api('/reports/revenue?range=7d')`.
+**Implementation Notes:** Gracefully handle fetch errors with defaults.
+
+### `frontend/src/app/(app)/inventory/page.tsx`
+**Description:** Client component inventory table with **Sync METRC** button.
+**Data:** `GET /inventory/list?limit=500`, `POST /inventory/sync`.
+**Implementation Notes:** Use `useApi()`; render `DataTable` with status chips.
+
+### `frontend/src/app/(app)/compliance/page.tsx`
+**Description:** Client component for alerts triage (filter by ALL/ERROR/WARN/INFO).
+**Data:** `GET /compliance/alerts`, `POST /compliance/revalidate`, `POST /compliance/fix/:id`.
+**Implementation Notes:** `Apply Fix` when `quickFix` present, then revalidate.
+
+### `frontend/src/app/(app)/delivery/page.tsx`
+**Description:** Client component list of routes with `New Route` CTA (demo stub).
+**Data:** `GET /delivery/routes` (can return empty array in minimal demo), `POST /delivery/routes` returns a mock route item used for UI.
+**Implementation Notes:** The backend may stub routes for now, or simply return `{ items: [] }` and a created route on POST for UX.
+
+### `frontend/src/app/globals.css`
+**Description:** Tailwind base + app styles.
+**Implementation Notes:** Minimal, readable defaults.
+
+### `frontend/src/components/AppShell.tsx`
+**Description:** Top bar + collapsible nav rail; consistent layout.
+**Implementation Notes:** Links to: Dashboard, Inventory, Compliance, Delivery, Reports, Settings. “Sync METRC”/“+ Delivery” quick actions in top bar.
+
+### `frontend/src/components/DataTable.tsx`
+**Description:** Generic, typed table with render overrides and empty state.
+**Implementation Notes:** Virtualization not required; simple Tailwind table.
+
+### `frontend/src/components/HealthGauge.tsx`
+**Description:** Circular compliance score ring (Framer Motion animated).
+**Implementation Notes:** Color changes with score (green/amber/red).
+
+### `frontend/src/components/StatCard.tsx`
+**Description:** Small KPI card component.
+
+### `frontend/src/lib/api.ts`
+**Description:** Server/Client fetch helpers that attach `Authorization` (if available) and `X-Tenant`.
+**Implementation Notes:**
+- Server: `api(path, init)` (can stub token for demo).
+- Client: `useApi()` returns token-aware fetch function.
+
+---
+
+## Backend (NestJS)
+
+### `backend/Dockerfile`
+**Description:** Multi-stage Nest build.
+**Implementation Notes:** Expose `4000`, run `start:prod`.
+
+### `backend/package.json`
+**Description:** Nest project with scripts:
+- `start`, `start:dev`, `start:prod`, `build`
+- `migration:run` (migrate placeholder)
+- `seed` (optional for later)
+**Dependencies:** `@nestjs/*`, `typeorm`, `pg`, `class-validator`, `helmet`, `axios`, `bcryptjs`, `pino` (+ pretty).
+
+### `backend/tsconfig.json`
+**Description:** Standard Nest TS config with decorators enabled.
+
+### `backend/src/main.ts`
+**Description:** Bootstrap Nest app: Helmet, CORS, listen on `4000`.
+**Implementation Notes:** Respect `ALLOWED_ORIGINS` env; log startup URL.
+
+### `backend/src/app.module.ts`
+**Description:** Register TypeORM with Postgres using env vars; `synchronize: true` for demo; import feature modules/repositories.
+**Entities Registered:** `Tenant`, `User`, `Membership`, `InventoryItem`, `ComplianceEvent`.
+**Controllers:** `InventoryController`, `ComplianceController`.
+**Providers:** `InventoryService`.
+
+### `backend/src/database/entities/tenant.entity.ts`
+**Description:** `tenants` with `id`, `slug` (unique), `name`, `active`, timestamps.
+
+### `backend/src/database/entities/user.entity.ts`
+**Description:** `users` with `id`, `email` (unique), `passwordHash` (nullable for OAuth), timestamps.
+
+### `backend/src/database/entities/membership.entity.ts`
+**Description:** `memberships` mapping user↔tenant with `role` enum (`OWNER|MANAGER|STAFF|DRIVER`).
+
+### `backend/src/database/entities/inventory_item.entity.ts`
+**Description:** `inventory_items` with `tenantId`, `sku`, `name`, `batchId`, `qty`, `expiresAt`, `status` (`OK|WARN|ERROR`), `updatedAt`.
+
+### `backend/src/database/entities/compliance_event.entity.ts`
+**Description:** `compliance_events` with `tenantId`, `type` (`SYNC|VALIDATION|SUBMISSION`), `payload` (JSONB), `status` (`OK|WARN|ERROR`), `createdAt`.
+
+### `backend/src/inventory/inventory.service.ts`
+**Description:** Service to list & sync inventory.
+**Implementation Notes:**
+- `list(limit=500)` → `{ items }` from DB.
+- `sync()` → In demo, **upsert** three example items: one `ERROR` (missing batch), one `WARN` (expired), one `OK`. Return `{ ok: true }`.
+
+### `backend/src/inventory/inventory.controller.ts`
+**Routes:**
+- `GET /inventory/list?limit=` → list inventory items.
+- `POST /inventory/sync` → trigger demo sync (seed items on first call).
+
+### `backend/src/compliance/compliance.controller.ts`
+**Routes (demo implementations):**
+- `GET /compliance/health` → `{ score: number }` (e.g., 78).
+- `GET /compliance/alerts?limit=` → `{ total, error, warn, items: [{id, code, severity, message, sku, quickFix}] }`.
+- `POST /compliance/revalidate` → recompute and return `{ ok: true }`.
+- `POST /compliance/fix/:id` → pretend to apply quick fix, return `{ ok: true, id }`.
+
+> **Note:** For the Delivery page to render, you may stub:
+> - `GET /delivery/routes` → `{ items: [] }`
+> - `POST /delivery/routes` → return a mock route object with `id`, `stops`, `durationMinutes`, `driverLink`
+> Optionally add a simple `delivery.controller.ts` (not required to run, but allowed).
+
+### `backend/src/scripts/migrate.ts`
+**Description:** Placeholder migration runner.
+**Implementation Notes:** Log that `synchronize:true` is active for demo and exit 0.
+
+### `backend/src/scripts/seed.ts`
+**Description:** Optional seed script (not required for docker bootstrap).
+**Implementation Notes:** If implemented, insert demo tenant and inventory rows.
+
+---
+
+## Implementation Guidance (important)
+
+- **CORS**: Allow `http://localhost:3000` by default via `ALLOWED_ORIGINS`.
+- **Auth**: For demo, backend can accept requests without validating JWT (since we’re not wiring NextAuth fully). Still set `X-Tenant: demo`.
+- **Errors**: Return JSON with meaningful fields; handle in frontend with toasts/labels (already reflected in components).
+- **Accessibility**: Ensure buttons have discernible text; tables have header cells; color contrast sufficient.
+
+---
+
+## After Generation — Local Runbook
+
+1) From repo root:
+```bash
+cp .env.example .env
+docker compose up --build
+````
+
+2. Open:
+
+* Frontend: [http://localhost:3000](http://localhost:3000)
+* API:      [http://localhost:4000](http://localhost:4000)
+
+3. On **Inventory** page, click **Sync METRC** once to seed demo rows.
+
+4. Visit **Compliance** to see demo alerts and try **Re-validate** and **Apply Fix**.
+
+---
+
+## Acceptance Checks
+
+* **Build**: `docker compose up --build` finishes without errors.
+* **API**: `GET /inventory/list` returns JSON (even if empty before sync).
+* **Inventory Sync**: `POST /inventory/sync` populates 3 items; subsequent `/inventory/list` shows them.
+* **Compliance Health**: `GET /compliance/health` returns a score (0–100).
+* **Compliance Alerts**: `GET /compliance/alerts` returns at least 2 items (ERROR + WARN) tied to the seeded inventory SKUs.
+* **Frontend Pages**: `/dashboard`, `/inventory`, `/compliance`, `/delivery` render without runtime errors.
+* **AppShell**: Navigation updates selected state; layout looks clean on mobile and desktop.
+
+---
+
+## Quality Bar
+
+* TypeScript everywhere (strict mode).
+* No TODOs or “placeholder” comments.
+* Minimal dependencies; keep bundle lean.
+* Code formatted and readable.
+
+> Generate all files and their contents accordingly. Do not omit files. Do not replace with pseudocode. Ensure the project boots on the first run.
+
+```
+```
