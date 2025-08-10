@@ -1,0 +1,18 @@
+{
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
+  "install": "bash -lc 'if [ -d cannacomply ]; then cd cannacomply; fi; npm ci --prefix frontend --no-audit --no-fund && npm ci --prefix backend --no-audit --no-fund'",
+  "start": "bash -lc 'echo Agent ready'",
+  "terminals": [
+    {
+      "name": "Frontend dev",
+      "command": "bash -lc 'cd cannacomply/frontend && npm run dev'"
+    },
+    {
+      "name": "Backend dev",
+      "command": "bash -lc 'cd cannacomply/backend && npm run start:dev'"
+    }
+  ]
+}
