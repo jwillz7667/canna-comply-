@@ -13,16 +13,16 @@ export class InventoryService {
     private readonly complianceRepo: Repository<ComplianceEvent>,
   ) {}
 
-  async list(limit = 500, tenantSlug = 'demo') {
+  async list(limit = 500, tenantId = 1) {
     const items = await this.inventoryRepo.find({
-      where: { tenantId: 1 },
+      where: { tenantId },
       order: { updatedAt: 'DESC' },
       take: limit,
     })
     return { items }
   }
 
-  async sync(tenantSlug = 'demo') {
+  async sync(tenantId = 1) {
     const now = new Date()
     const upserts = [
       {
@@ -52,16 +52,16 @@ export class InventoryService {
     ]
 
     for (const u of upserts) {
-      let item = await this.inventoryRepo.findOne({ where: { sku: u.sku, tenantId: 1 } })
+      let item = await this.inventoryRepo.findOne({ where: { sku: u.sku, tenantId } })
       if (!item) {
-        item = this.inventoryRepo.create({ ...u, tenantId: 1 })
+        item = this.inventoryRepo.create({ ...u, tenantId })
       } else {
         Object.assign(item, u)
       }
       await this.inventoryRepo.save(item)
     }
     await this.complianceRepo.save(
-      this.complianceRepo.create({ tenantId: 1, type: 'SYNC', payload: { count: upserts.length }, status: 'OK' }),
+      this.complianceRepo.create({ tenantId, type: 'SYNC', payload: { count: upserts.length }, status: 'OK' }),
     )
     return { ok: true }
   }
