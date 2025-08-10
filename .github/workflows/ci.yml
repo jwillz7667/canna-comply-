@@ -7,7 +7,26 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install frontend deps
+        working-directory: frontend
+        run: |
+          npm ci || npm i
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_TENANT_SLUG: demo
+        run: npm run build
+
+  backend:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -19,9 +38,9 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U app -d cannacomply" 
-          --health-interval=5s 
-          --health-timeout=5s 
+          --health-cmd="pg_isready -U app -d cannacomply" \
+          --health-interval=5s \
+          --health-timeout=5s \
           --health-retries=20
     steps:
       - uses: actions/checkout@v4
@@ -29,26 +48,12 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-
-      - name: Install frontend deps
-        working-directory: cannacomply/frontend
-        run: |
-          npm ci || npm i
-
-      - name: Build frontend
-        working-directory: cannacomply/frontend
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:4000
-          NEXT_PUBLIC_TENANT_SLUG: demo
-        run: npm run build
-
       - name: Install backend deps
-        working-directory: cannacomply/backend
+        working-directory: backend
         run: |
           npm ci || npm i
-
       - name: Build backend
-        working-directory: cannacomply/backend
+        working-directory: backend
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
