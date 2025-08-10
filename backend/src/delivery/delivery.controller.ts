@@ -1,26 +1,30 @@
-import { Controller, Get, Post } from '@nestjs/common'
+import { Controller, Get, Post, Req } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { DeliveryRoute } from '../database/entities/delivery_route.entity'
+import { TenantResolver } from '../common/tenant.util'
 
 @Controller('delivery')
 export class DeliveryController {
   constructor(
     @InjectRepository(DeliveryRoute)
     private readonly routesRepo: Repository<DeliveryRoute>,
+    private readonly tenantResolver: TenantResolver,
   ) {}
 
   @Get('routes')
-  async getRoutes() {
-    const items = await this.routesRepo.find({ where: { tenantId: 1 }, order: { createdAt: 'DESC' } })
+  async getRoutes(@Req() req: any) {
+    const tenantId = await this.tenantResolver.resolveTenantId(req)
+    const items = await this.routesRepo.find({ where: { tenantId }, order: { createdAt: 'DESC' } })
     return { items: items.map(r => ({ id: r.routeCode, stops: r.stops, durationMinutes: r.durationMinutes, driverLink: r.driverLink })) }
   }
 
   @Post('routes')
-  async createRoute() {
+  async createRoute(@Req() req: any) {
+    const tenantId = await this.tenantResolver.resolveTenantId(req)
     const id = String(Math.floor(Math.random() * 9000) + 1000)
     const entity = this.routesRepo.create({
-      tenantId: 1,
+      tenantId,
       routeCode: id,
       stops: Math.floor(Math.random() * 6) + 3,
       durationMinutes: Math.floor(Math.random() * 120) + 30,
@@ -31,8 +35,9 @@ export class DeliveryController {
   }
 
   @Get('summary/today')
-  async summaryToday() {
-    const count = await this.routesRepo.count({ where: { tenantId: 1 } })
+  async summaryToday(@Req() req: any) {
+    const tenantId = await this.tenantResolver.resolveTenantId(req)
+    const count = await this.routesRepo.count({ where: { tenantId } })
     return { totalRoutes: count, completed: Math.floor(count / 2) }
   }
 }

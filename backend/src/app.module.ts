@@ -15,6 +15,7 @@ import { JwtGuard } from './common/guards/jwt.guard'
 import { DeliveryController } from './delivery/delivery.controller'
 import { HealthController } from './system/health.controller'
 import { ReportsController } from './reports/reports.controller'
+import { TenantResolver } from './common/tenant.util'
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ReportsController } from './reports/reports.controller'
   controllers: [InventoryController, ComplianceController, DeliveryController, HealthController, ReportsController],
   providers: [
     InventoryService,
+    TenantResolver,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtGuard },
   ],
